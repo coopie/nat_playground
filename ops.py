@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
 import scipy
+import numpy as np
 
 
 def cost_matrix(predicted, targets, loss_func, scope=None):
@@ -20,6 +21,13 @@ def cost_matrix(predicted, targets, loss_func, scope=None):
         )
 
 
+def euclidean_distance(x, y):
+    x = tf.cast(x, tf.float32)
+    y = tf.cast(y, tf.float32)
+    squared_distance = ((x - y) ** 2)
+    return tf.sqrt(tf.reduce_sum(squared_distance, axis=1))
+
+
 def repeat(x, n, scope=None):
     """
     Repeat a 1D vector N times
@@ -28,28 +36,14 @@ def repeat(x, n, scope=None):
         return tf.transpose(tf.tile(tf.expand_dims(x, -1), [1, n]))
 
 
-def dot_product(x, y):
-    coordinate_muls = tf.multiply(x, y)
-    return tf.reduce_sum(coordinate_muls, -1)
-
-
-def cosine_sim(x, y):
-    """
-    Gets batches of left and right vectors b x w (w is the same on both sides)
-        and returns the cosine similarity (b x 1)
-
-    Also works for single vectors
-    """
-    with tf.name_scope('cosine_sim', values=[x, y]):
-        x_norm = tf.nn.l2_normalize(x, dim=-1)
-        y_norm = tf.nn.l2_normalize(y, dim=-1)
-        cos_sim = dot_product(x_norm, y_norm)
-    return cos_sim
-
-
 def hungarian_method(cost_matrix):
+
+    def optimal_matching(*args, **kwargs):
+        indices, _ = scipy.optimize.linear_sum_assignment(*args, **kwargs)
+        return indices.astype(np.int32)
+
     return tf.py_func(
-        scipy.optimize.linear_sum_assignment,
+        optimal_matching,
         [cost_matrix],
         stateful=False,
         Tout=[tf.int32],

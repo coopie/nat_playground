@@ -1,6 +1,7 @@
 # Project Specific
 .DS_Store
-
+data/mnist_digits
+data/fashion_mnist
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
