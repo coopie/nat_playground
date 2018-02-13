@@ -23,7 +23,7 @@ def sample_uniformly_from_heatmap(heatmap, num_targets):
     sampled_flattened_pixel_indices = np.random.choice(
         len(probability_buckets),
         num_targets,
-        replace=False,
+        replace=True,
         p=probability_buckets
     )
 
