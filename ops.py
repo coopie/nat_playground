@@ -1,6 +1,5 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
-import numpy as np
 import scipy
 
 
@@ -30,7 +29,7 @@ def repeat(x, n, scope=None):
 
 
 def dot_product(x, y):
-    coordinate_muls = tf.multiply(x, y)  # b x w
+    coordinate_muls = tf.multiply(x, y)
     return tf.reduce_sum(coordinate_muls, -1)
 
 
