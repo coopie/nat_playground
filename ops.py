@@ -48,4 +48,4 @@ def hungarian_method(cost_matrix):
         stateful=False,
         Tout=[tf.int32],
         name='hungarian_method'
-    )
+    )[0]
