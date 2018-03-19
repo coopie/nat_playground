@@ -23,3 +23,39 @@ class OpsTest(tf.test.TestCase):
                 dists,
                 np.array([0, 1, 2])
             )
+
+    def test_hungarian_method(self):
+        with self.test_session():
+            distances = tf.constant([
+                [
+                    [0, 1],
+                    [1, 0]
+                ],
+                [
+                    [1, 0],
+                    [0, 1]
+                ]
+            ])
+            optimal_indices = ops.hungarian_method(distances).eval()
+            np.testing.assert_array_almost_equal(
+                optimal_indices,
+                [
+                    [0, 1],
+                    [1, 0]
+                ]
+
+            )
+
+            distances = tf.constant([[
+                [0, 1, 2],
+                [1, 1, 1],
+                [4, 1, 9]
+            ]])
+            optimal_indices = ops.hungarian_method(distances).eval()
+            np.testing.assert_array_almost_equal(
+                optimal_indices,
+                [
+                    [0, 2, 1],
+                ]
+
+            )

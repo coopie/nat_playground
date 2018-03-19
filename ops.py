@@ -39,13 +39,23 @@ def repeat(x, n, scope=None):
 def hungarian_method(cost_matrix):
 
     def optimal_matching(*args, **kwargs):
-        indices, _ = scipy.optimize.linear_sum_assignment(*args, **kwargs)
-        return indices.astype(np.int32)
+        cost_matrices, = args
+        new_indices = np.stack([
+            scipy.optimize.linear_sum_assignment(cm)[1]
+            for cm in cost_matrices
+        ])
+        return new_indices.astype(np.int32)
 
-    return tf.py_func(
+    new_indices = tf.py_func(
         optimal_matching,
         [cost_matrix],
         stateful=False,
         Tout=[tf.int32],
         name='hungarian_method'
     )[0]
+    assert cost_matrix.shape[1] == cost_matrix.shape[2]
+    # set the new shape of the op
+    batch_size = cost_matrix.shape[0]
+    number_of_points = cost_matrix.shape[1]
+    new_indices.set_shape(tf.TensorShape((batch_size, number_of_points)))
+    return new_indices

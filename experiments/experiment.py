@@ -29,12 +29,12 @@ def run_experiment(
     input_t = tf.placeholder(
         dtype=tf.float32,
         name='input_t',
-        shape=(batch_size, *train_x.shape[1:])
+        shape=(None, *train_x.shape[1:])
     )
     target_t = tf.placeholder_with_default(
         input=np.zeros((batch_size, targets.shape[1])),
         name='input_t',
-        shape=(batch_size, targets.shape[1])
+        shape=(None, targets.shape[1])
     )
 
     reconstructed_t, z_t = model_fn(input_t, targets.shape[1])
@@ -89,14 +89,20 @@ def run_experiment(
         targets[batch_indices] = new_targets
 
         if current_step % eval_steps == 2:
-            validation_session_results = [
-                sess.run(
-                    [mean_reconstruction_loss_t, reconstructed_t],
-                    feed_dict={
-                        input_t: validation_x[i:i + batch_size],
-                    }
-                ) for i in range(0, len(validation_x), batch_size)
-            ]
+            # validation_session_results = [
+            #     sess.run(
+            #         [mean_reconstruction_loss_t, reconstructed_t],
+            #         feed_dict={
+            #             input_t: validation_x[i:i + batch_size],
+            #         }
+            #     ) for i in range(0, len(validation_x), batch_size)
+            # ]
+            validation_session_results = sess.run(
+                [mean_reconstruction_loss_t, reconstructed_t],
+                feed_dict={
+                    input_t: validation_x,
+                }
+            )
 
             validation_reconstruction_loss = np.mean([
                 v[0] for v in validation_session_results
