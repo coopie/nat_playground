@@ -1,16 +1,21 @@
 import numpy as np
 
 
-def gaussian_noise(num_targets, dims):
-    return np.random.normal(size=(num_targets, dims))
+def evenly_distribute(bucket_weights, number_of_points):
+    normalized = bucket_weights / bucket_weights.sum()
+
+    distributed = np.around(normalized * number_of_points).astype(np.int32)
+    return distributed
 
 
-def sample_uniformly_from_heatmap(heatmap, num_targets):
+def sample_from_heatmap(heatmap, num_targets, sampling_method='random'):
     """
     TODO: what this does
 
         for each pixel, sample uniformly within that pixel
     """
+    allowed_methods = {'random', 'even'}
+    assert sampling_method in allowed_methods, f'Incorrect sampling method {sampling_method}. Allowed {allowed_methods}'
     assert heatmap.shape[0] == heatmap.shape[1]
     width = heatmap.shape[0]
 
@@ -20,12 +25,31 @@ def sample_uniformly_from_heatmap(heatmap, num_targets):
     ])
     assert coordinates_of_buckets.max() == width - 1
 
-    sampled_flattened_pixel_indices = np.random.choice(
-        len(probability_buckets),
-        num_targets,
-        replace=True,
-        p=probability_buckets
-    )
+    if sampling_method == 'random':
+        sampled_flattened_pixel_indices = np.random.choice(
+            len(probability_buckets),
+            num_targets,
+            replace=True,
+            p=probability_buckets
+        )
+    elif sampling_method == 'even':
+        bucket_counts = evenly_distribute(probability_buckets, num_targets)
+        sampled_flattened_pixel_indices = np.concatenate([
+            np.ones(bucket_count, dtype=np.int64) * i for i, bucket_count in enumerate(bucket_counts)
+        ])
+        # there is always some missing indices due to rounding down, or too many from rounding up
+        sampled_flattened_pixel_indices = np.concatenate(
+            (
+                sampled_flattened_pixel_indices,
+                np.random.choice(
+                    len(probability_buckets),
+                    max(num_targets - len(sampled_flattened_pixel_indices), 0),
+                    replace=True,
+                    p=probability_buckets
+                )
+            )
+        )
+        sampled_flattened_pixel_indices = sampled_flattened_pixel_indices[:num_targets]
 
     sample_pixel_coordinates = [
         coordinates_of_buckets[sampled_index]

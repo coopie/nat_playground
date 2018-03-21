@@ -15,12 +15,12 @@ def run_experiment(
     targets_fn,
     dataset_fn,
     model_fn,
+    batch_size,
     run_name,
     config_path=None
 ):
-    batch_size = 100
     optimizer = tf.train.AdamOptimizer(1e-3)
-    eval_steps = 200
+    eval_steps = 20_000
 
     (train_x, _), (validation_x, _), _ = dataset_fn()
     targets = targets_fn(len(train_x))
@@ -105,7 +105,6 @@ def run_experiment(
                     }
                 ) for i in range(0, len(validation_x), batch_size)
             ]
-
             validation_z = np.concatenate([x[0] for x in validation_results])
 
             validation_noise_image, *_ = np.histogram2d(validation_z[:, 0], validation_z[:, 1], bins=(256, 256))
@@ -128,6 +127,7 @@ if __name__ == '__main__':
         'targets_fn': None,
         'dataset_fn': None,
         'model_fn': None,
+        'batch_size': 100,
     }
 
     config = {}
