@@ -20,10 +20,13 @@ def run_experiment(
     config_path=None
 ):
     optimizer = tf.train.AdamOptimizer(1e-3)
-    eval_steps = 20_000
+    eval_steps = 2000
 
     (train_x, _), (validation_x, _), _ = dataset_fn()
     targets = targets_fn(len(train_x))
+
+    assert len(validation_x) // batch_size == len(validation_x) / batch_size, \
+        'batch_size must be a multiple for validation size due to laziness'
 
     input_t = tf.placeholder(
         dtype=tf.float32,
@@ -42,10 +45,10 @@ def run_experiment(
         z_t, target_t,
         loss_func=ops.euclidean_distance
     )
-    new_assignment_indices = ops.hungarian_method(
+    new_assignment_indices_t = ops.hungarian_method(
         tf.expand_dims(cost_matrix_t, 0)
     )
-    new_targets_t = tf.gather(target_t, new_assignment_indices)[0]
+    new_targets_t = tf.gather(target_t, new_assignment_indices_t)[0]
 
     nat_loss_t = ops.euclidean_distance(new_targets_t, z_t)
     mean_nat_loss_t = tf.reduce_mean(nat_loss_t)
@@ -79,22 +82,22 @@ def run_experiment(
     logging.info('Training')
     while True:
         batch_indices = np.random.choice(len(train_x), size=batch_size)
-        batch_images = train_x[batch_indices]
-        batch_target = targets[batch_indices]
+        batch_input_noise = train_x[batch_indices]
+        batch_target_noise = targets[batch_indices]
 
-        current_step, new_targets, _ = sess.run(
-            [global_step_t, new_targets_t, train_op],
+        current_step, new_assignment_indices, _ = sess.run(
+            [global_step_t, new_assignment_indices_t, train_op],
             feed_dict={
-                input_t: batch_images,
-                target_t: batch_target
+                input_t: batch_input_noise,
+                target_t: batch_target_noise
             }
         )
 
-        train_x[batch_indices] = new_targets
+        train_x[batch_indices] = batch_input_noise[new_assignment_indices]
 
         if current_step % eval_steps == 1:
             # log change in targets
-            number_changed = (new_targets.sum(axis=1) != batch_target.sum(axis=1)).sum()
+            number_changed = (new_assignment_indices != np.arange(len(new_assignment_indices))).sum()
             metric_logger.log_scalar('fraction_of_targets_changing', number_changed / batch_size, current_step)
 
             validation_results = [
