@@ -62,3 +62,29 @@ def sample_from_heatmap(heatmap, num_targets, sampling_method='random'):
     ])
 
     return unnormalized_points / width
+
+
+def bucket_into_sub_regions(targets, bounds=((0, 1), (0, 1)), buckets=(20, 20)):
+    """
+    Produce a 2D array where the (i,j)th entry is a list of all indices in targets which exust in that bucketed area
+    """
+    assert len(targets.shape) == 2 and targets.shape[1] == 2
+    x_buckets, y_buckets = buckets
+    (x_min, x_max), (y_min, y_max) = bounds
+    x_step = (x_max - x_min) / x_buckets
+    y_step = (y_max - y_min) / y_buckets
+
+    bucketed = [
+        [[] for _ in range(y_buckets)] for _ in range(x_buckets)
+    ]
+    x_bucket_indices = ((targets[:, 0] - x_min) / x_step).astype(np.int32)
+    y_bucket_indices = ((targets[:, 1] - y_min) / y_step).astype(np.int32)
+
+    for i, (x, y) in enumerate(zip(x_bucket_indices, y_bucket_indices)):
+        bucketed[x][y] += [i]
+
+    for i in range(x_buckets):
+        for j in range(y_buckets):
+            bucketed[i][j] = np.array(bucketed[i][j])
+
+    return bucketed

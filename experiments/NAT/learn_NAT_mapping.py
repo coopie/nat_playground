@@ -90,7 +90,7 @@ def run_experiment(
             }
         )
 
-        targets[batch_indices] = new_targets
+        train_x[batch_indices] = new_targets
 
         if current_step % eval_steps == 1:
             # log change in targets
