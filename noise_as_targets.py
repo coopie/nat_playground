@@ -1,4 +1,5 @@
 import numpy as np
+import itertools
 
 
 def evenly_distribute(bucket_weights, number_of_points):
@@ -64,27 +65,58 @@ def sample_from_heatmap(heatmap, num_targets, sampling_method='random'):
     return unnormalized_points / width
 
 
-def bucket_into_sub_regions(targets, bounds=((0, 1), (0, 1)), buckets=(20, 20)):
+def bucket_into_sub_regions(points, bounds=((0, 1), (0, 1)), buckets=(20, 20)):
     """
-    Produce a 2D array where the (i,j)th entry is a list of all indices in targets which exust in that bucketed area
+    Produce a ND array where the (i,j...)th entry is a list of all indices in points which exist in that bucketed area
     """
-    assert len(targets.shape) == 2 and targets.shape[1] == 2
-    x_buckets, y_buckets = buckets
-    (x_min, x_max), (y_min, y_max) = bounds
-    x_step = (x_max - x_min) / x_buckets
-    y_step = (y_max - y_min) / y_buckets
+    # TODO: maybe allow non-linear bucketing?
+    dimensions = points.shape[1]
+    assert len(buckets) == dimensions, \
+        f'buckets must have the same dimensions as the noise, expected {dimensions}, got {len(buckets)}'
+    assert len(bounds) == dimensions, \
+        f'bounds must have the same dimensions as the noise, expected {dimensions}, got {len(bounds)}'
+    assert all(len(bound) == 2 for bound in bounds), 'all dimension bounds must be (low, high)'
 
-    bucketed = [
-        [[] for _ in range(y_buckets)] for _ in range(x_buckets)
-    ]
-    x_bucket_indices = ((targets[:, 0] - x_min) / x_step).astype(np.int32)
-    y_bucket_indices = ((targets[:, 1] - y_min) / y_step).astype(np.int32)
+    # calculate the bucket step size for each dimension
+    step_sizes = np.array([
+        (max_bound - min_bound) / num_buckets
+        for (min_bound, max_bound), num_buckets in zip(bounds, buckets)
+    ])
 
-    for i, (x, y) in enumerate(zip(x_bucket_indices, y_bucket_indices)):
-        bucketed[x][y] += [i]
+    def bucket_lookup(point):
+        """
+        point can be single point or multiple points
+        """
+        nonlocal dimensions
+        nonlocal step_sizes
+        nonlocal bounds
+        # for each dimension, find the index for each point, then stack them
+        window_fracton = np.stack([
+            # point - min_bound / step_size
+            (point[:, i] - bounds[i][0]) / step_sizes[i]
+            for i in range(dimensions)
+        ], axis=1)
 
-    for i in range(x_buckets):
-        for j in range(y_buckets):
-            bucketed[i][j] = np.array(bucketed[i][j])
+        # truncate to integers to find the indices
+        return window_fracton.astype(np.int32)
 
-    return bucketed
+    # create a n-dimensional bucket array (A bit hacky, but everything else was much too fiddly)
+    bucketed = np.zeros(buckets).tolist()
+
+    for index in itertools.product(*[range(num_buckets) for num_buckets in buckets]):
+        # drill into the list
+        bucket_view = bucketed
+        for coord in index[:-1]:
+            bucket_view = bucket_view[coord]
+
+        bucket_view[index[-1]] = []
+
+    # add the index of each target to the corresponding buckets
+    for i, point_index in enumerate(bucket_lookup(points)):
+        bucket_view = bucketed
+        for index in point_index:
+            bucket_view = bucket_view[index]
+
+        bucket_view.append(i)
+
+    return np.array(bucketed), bucket_lookup

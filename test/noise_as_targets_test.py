@@ -5,7 +5,7 @@ import noise_as_targets
 
 def test_bucket_into_sub_regions_simple():
     points = np.random.uniform(size=(20, 2))
-    bucketed = noise_as_targets.bucket_into_sub_regions(
+    bucketed, _ = noise_as_targets.bucket_into_sub_regions(
         points,
         bounds=((0, 1), (0, 1)),
         buckets=(1, 1)
@@ -26,11 +26,11 @@ def test_bucket_into_sub_regions_points_are_in_correct_regions():
         [0.51, 0.49],
         [0.49, 0.51],
         [0.51, 0.51]
-    ])
+    ]) + 1
     # first bucket in the x direction only
-    bucketed = noise_as_targets.bucket_into_sub_regions(
+    bucketed, _ = noise_as_targets.bucket_into_sub_regions(
         points,
-        bounds=((0, 1), (0, 1)),
+        bounds=((1, 2), (1, 2)),
         buckets=(2, 1)
     )
 
@@ -47,9 +47,9 @@ def test_bucket_into_sub_regions_points_are_in_correct_regions():
         [4, 6]
     )
 
-    bucketed = noise_as_targets.bucket_into_sub_regions(
+    bucketed, _ = noise_as_targets.bucket_into_sub_regions(
         points,
-        bounds=((0, 1), (0, 1)),
+        bounds=((1, 2), (1, 2)),
         buckets=(2, 2)
     )
     np.testing.assert_array_almost_equal(

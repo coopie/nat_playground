@@ -15,11 +15,13 @@ heatmap = utils.image_to_square_greyscale_array(im)
 
 seed = 1337
 train_size = 100_000
-data_points = np.random.normal(size=(train_size, 3))
+data_points = np.random.normal(size=(train_size, 8))
+# l2 normalize the points
+data_points /= np.linalg.norm(data_points, axis=1, ord=2).reshape((-1, 1))
 
 
 config = {
-    'dataset_fn': lambda: [(data_points, None), (data_points, None), (None, None)],
+    'dataset_fn': lambda: data_points,
     'targets_fn': lambda num_targets: noise_as_targets.sample_from_heatmap(
         heatmap, num_targets, sampling_method='even',
     ),

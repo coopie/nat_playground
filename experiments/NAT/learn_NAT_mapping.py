@@ -22,10 +22,10 @@ def run_experiment(
     optimizer = tf.train.AdamOptimizer(1e-3)
     eval_steps = 2000
 
-    (train_x, _), (validation_x, _), _ = dataset_fn()
+    train_x = dataset_fn()
     targets = targets_fn(len(train_x))
 
-    assert len(validation_x) // batch_size == len(validation_x) / batch_size, \
+    assert len(train_x) % batch_size == 0, \
         'batch_size must be a multiple for validation size due to laziness'
 
     input_t = tf.placeholder(
@@ -47,8 +47,8 @@ def run_experiment(
     )
     new_assignment_indices_t = ops.hungarian_method(
         tf.expand_dims(cost_matrix_t, 0)
-    )
-    new_targets_t = tf.gather(target_t, new_assignment_indices_t)[0]
+    )[0]
+    new_targets_t = tf.gather(target_t, new_assignment_indices_t)
 
     nat_loss_t = ops.euclidean_distance(new_targets_t, z_t)
     mean_nat_loss_t = tf.reduce_mean(nat_loss_t)
@@ -80,8 +80,14 @@ def run_experiment(
     )
 
     logging.info('Training')
+    epoch_indices = np.random.permutation(np.arange(len(train_x)))
     while True:
-        batch_indices = np.random.choice(len(train_x), size=batch_size)
+        if len(epoch_indices) < batch_size:
+            logging.info('Completed Epoch')
+            epoch_indices = np.random.permutation(np.arange(len(train_x)))
+        batch_indices = epoch_indices[:batch_size]
+        epoch_indices = epoch_indices[batch_size:]
+
         batch_input_noise = train_x[batch_indices]
         batch_target_noise = targets[batch_indices]
 
@@ -104,9 +110,9 @@ def run_experiment(
                 sess.run(
                     [z_t],
                     feed_dict={
-                        input_t: validation_x[i:i + batch_size],
+                        input_t: train_x[i:i + batch_size],
                     }
-                ) for i in range(0, len(validation_x), batch_size)
+                ) for i in range(0, len(train_x), batch_size)
             ]
             validation_z = np.concatenate([x[0] for x in validation_results])
 
