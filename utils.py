@@ -30,3 +30,17 @@ def image_to_square_greyscale_array(image):
             constant_values=0
         )
     return intensity_map
+
+
+def fast_random_choice(x, size, num_tries=2):
+    """
+    Try a really fast random sample (with replacement) as it's much faster than without.
+    if it doesn't work, try without replacement.
+    """
+    for _ in range(num_tries):
+        sample = np.random.choice(x, size, replace=True)
+        if len(sample) == len(np.unique(sample)):
+            return sample
+
+    # otherwise do the slow sampling
+    return np.random.choice(x, size, replace=False)

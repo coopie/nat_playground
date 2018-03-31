@@ -83,22 +83,36 @@ def bucket_into_sub_regions(points, bounds=((0, 1), (0, 1)), buckets=(20, 20)):
         for (min_bound, max_bound), num_buckets in zip(bounds, buckets)
     ])
 
-    def bucket_lookup(point):
+    def bucket_lookup(points):
         """
-        point can be single point or multiple points
+        Return the index tuple (x_indices, y_indices, ....) for each point in points
+         essentially, bucketed[index_fn(point)] will return the buckets for each point in point
+
+        points can be single point or multiple points
         """
         nonlocal dimensions
         nonlocal step_sizes
         nonlocal bounds
-        # for each dimension, find the index for each point, then stack them
-        window_fracton = np.stack([
+        if points.ndim == 1:
+            points = np.reshape(points, (1, -1))
+            single_point = True
+        else:
+            single_point = False
+
+        # for each dimension, find the index for each point
+        indices_for_each_dimension = tuple([
             # point - min_bound / step_size
-            (point[:, i] - bounds[i][0]) / step_sizes[i]
+            ((points[:, i] - bounds[i][0]) / step_sizes[i]).astype(np.int32)
             for i in range(dimensions)
-        ], axis=1)
+        ])
+
+        if single_point:
+            indices_for_each_dimension = tuple([
+                index[0] for index in indices_for_each_dimension
+            ])
+        return indices_for_each_dimension
 
         # truncate to integers to find the indices
-        return window_fracton.astype(np.int32)
 
     # create a n-dimensional bucket array (A bit hacky, but everything else was much too fiddly)
     bucketed = np.zeros(buckets).tolist()
@@ -111,8 +125,13 @@ def bucket_into_sub_regions(points, bounds=((0, 1), (0, 1)), buckets=(20, 20)):
 
         bucket_view[index[-1]] = []
 
+    bucket_indices = bucket_lookup(points)
+    # stack the indices into an array of indices per point
+    # (i.e. point_indices[0] is the index of points[0])
+    point_indices = np.stack(bucket_indices, axis=1)
+
     # add the index of each target to the corresponding buckets
-    for i, point_index in enumerate(bucket_lookup(points)):
+    for i, point_index in enumerate(point_indices):
         bucket_view = bucketed
         for index in point_index:
             bucket_view = bucket_view[index]

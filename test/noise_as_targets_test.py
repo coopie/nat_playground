@@ -17,7 +17,7 @@ def test_bucket_into_sub_regions_simple():
     assert all(i in bucketed[0][0] for i in range(20)), 'expected one buckets with all points in it'
 
 
-def test_bucket_into_sub_regions_points_are_in_correct_regions():
+def test_bucket_into_sub_regions_points_are_in_correct_regions_bucketed_correct():
     points = np.array([
         [0.1, 0.1],
         [0.1, 0.1],
@@ -68,3 +68,23 @@ def test_bucket_into_sub_regions_points_are_in_correct_regions():
         bucketed[1][1],
         [6]
     )
+
+
+def test_bucket_into_sub_regions_points_are_in_correct_regions_index_fn_correct():
+    points = np.random.uniform(low=0, high=1.0, size=(500, 2))
+
+    bucketed, index_fn = noise_as_targets.bucket_into_sub_regions(
+        points,
+        bounds=((0, 1), (0, 1)),
+        buckets=(20, 20)
+    )
+
+    # test reverse lookup is correct for a few points
+    for i, point in enumerate(points[:10]):
+        assert i in bucketed[index_fn(point)], \
+            f'Index lookup of {point} ({index_fn(point)}) did not return a bucket containing index {i}'
+
+    # np.testing.assert_array_equal(
+    #     points[50:60],
+    #     bucketed[index]
+    # )
