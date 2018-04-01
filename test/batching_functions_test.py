@@ -23,8 +23,10 @@ def test_random_batching():
 
 def test_progressive_local_search():
     # TODO: proper testing other than covering the code
-    points = np.random.uniform(size=(10, 2))
+    points = np.random.uniform(size=(200, 2))
     batching_function = batching_functions.progressive_local_search(points)
 
-    for i in range(200):
-        batching_function(batch_size=10, context={'current_step': i}, targets=points)
+    for i in range(10):
+        a = batching_function(batch_size=10, context={'current_step': i}, targets=points)
+        assert a.ndim == 1
+        assert len(a) == 10
