@@ -3,8 +3,11 @@ import logging
 import os
 import sys
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # NOQA Shut up tensorflow warnings
+
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.ops import state_ops
 
 import ops
 import utils
@@ -44,17 +47,20 @@ def run_experiment(
 
     cost_matrix_t = ops.cost_matrix(
         z_t, target_t,
-        loss_func=ops.squared_distance
+        loss_func=ops.euclidean_distance
     )
     new_assignment_indices_t = ops.hungarian_method(
         tf.expand_dims(cost_matrix_t, 0)
     )[0]
     new_targets_t = tf.gather(target_t, new_assignment_indices_t)
 
-    nat_loss_t = ops.squared_distance(new_targets_t, z_t)
+    nat_loss_t = ops.euclidean_distance(new_targets_t, z_t)
     mean_nat_loss_t = tf.reduce_mean(nat_loss_t)
 
     global_step_t = tf.train.get_or_create_global_step()
+
+    # increment_global_step_t = state_ops.assign_add(global_step_t, 1, name='increment_global_step_t')
+
     train_op = optimizer.minimize(
         mean_nat_loss_t,
         global_step_t
@@ -82,8 +88,9 @@ def run_experiment(
 
     logging.info('Training')
     current_step = 0
-
     moving_nat_loss = 0.5
+    moving_reassignment_fraction = 1.0
+
     while True:
         batch_indices = batching_fn(
             batch_size=batch_size, targets=targets,
@@ -104,29 +111,14 @@ def run_experiment(
             }
         )
         moving_nat_loss = (0.99 * moving_nat_loss) + (0.01 * mean_loss_for_batch)
+        fraction_changed = (new_assignment_indices != np.arange(len(new_assignment_indices))).mean()
+        moving_reassignment_fraction = (0.99 * moving_reassignment_fraction) + (0.01 * fraction_changed)
 
+        # Update target assignment
         train_x[batch_indices] = batch_input_noise[new_assignment_indices]
 
         if current_step % eval_steps == 1:
-            # log change in targets
-
-            # number_changed = (new_assignment_indices != np.arange(len(new_assignment_indices))).sum()
-            # new_targets = batch_target_noise[new_assignment_indices]
-            # delta_tartgets = new_targets - batch_target_noise
-            # delta = new_targets - z
-            # dists_targets = np.linalg.norm(delta_tartgets, ord=2, axis=1)
-            # dists = np.linalg.norm(delta, ord=2, axis=1)
-            # dists_x = np.linalg.norm(
-            #     batch_input_noise - batch_input_noise[new_assignment_indices],
-            #     ord=2, axis=1
-            # )
-            #
-            # if current_step > 20_000:
-            #     import code  # NOQA
-            #     code.interact(local=locals())
-
-            number_changed = (new_assignment_indices != np.arange(len(new_assignment_indices))).sum()
-            metric_logger.log_scalar('fraction_of_targets_changing', number_changed / batch_size, current_step)
+            metric_logger.log_scalar('fraction_of_targets_changing', moving_reassignment_fraction, current_step)
 
             validation_results = [
                 sess.run(
@@ -152,6 +144,10 @@ if __name__ == '__main__':
     config_path, run_name = args
 
     logging.basicConfig(level=logging.INFO)
+
+    tf_log = logging.getLogger('tensorflow')
+    tf_log.setLevel(logging.ERROR)
+
     user_config = utils.import_module(config_path).config
 
     default_config = {

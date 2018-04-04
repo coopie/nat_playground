@@ -47,18 +47,25 @@ def two_layer_mlp(input_t, z_size, hidden_dim=128, activation_fn=tf.sigmoid):
     return z_t
 
 
-def multi_layer_mlp(input_t, z_size, hidden_dims, activation_fn=tf.sigmoid):
+def multi_layer_mlp(
+    input_t,
+    z_size,
+    hidden_dims,
+    activation_fn=tf.nn.relu,
+    output_activation_fn=tf.sigmoid
+):
     flattened = tf.layers.flatten(input_t)
     hidden_output = flattened
     for hidden_dim in hidden_dims:
         hidden_output = tf.contrib.layers.fully_connected(
             hidden_output,
-            hidden_dim
+            hidden_dim,
+            activation_fn=activation_fn
         )
 
     z_t = tf.contrib.layers.fully_connected(
         hidden_output,
         z_size,
-        activation_fn=activation_fn
+        activation_fn=output_activation_fn
     )
     return z_t
