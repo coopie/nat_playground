@@ -12,18 +12,19 @@ import metric_logging
 
 
 def run_experiment(
-    targets_fn,
     dataset_fn,
     model_fn,
+    batching_fn,
     batch_size,
     run_name,
     config_path=None
 ):
     optimizer = tf.train.AdamOptimizer(1e-3)
-    eval_steps = 2000
+    eval_steps = 500
 
-    train_x = dataset_fn()
-    targets = targets_fn(len(train_x))
+    train_x, targets = dataset_fn()
+
+    assert len(train_x) == len(targets)
 
     assert len(train_x) % batch_size == 0, \
         'batch_size must be a multiple for validation size due to laziness'
@@ -43,14 +44,14 @@ def run_experiment(
 
     cost_matrix_t = ops.cost_matrix(
         z_t, target_t,
-        loss_func=ops.euclidean_distance
+        loss_func=ops.squared_distance
     )
     new_assignment_indices_t = ops.hungarian_method(
         tf.expand_dims(cost_matrix_t, 0)
     )[0]
     new_targets_t = tf.gather(target_t, new_assignment_indices_t)
 
-    nat_loss_t = ops.euclidean_distance(new_targets_t, z_t)
+    nat_loss_t = ops.squared_distance(new_targets_t, z_t)
     mean_nat_loss_t = tf.reduce_mean(nat_loss_t)
 
     global_step_t = tf.train.get_or_create_global_step()
@@ -80,29 +81,50 @@ def run_experiment(
     )
 
     logging.info('Training')
-    epoch_indices = np.random.permutation(np.arange(len(train_x)))
+    current_step = 0
+
+    moving_nat_loss = 0.5
     while True:
-        if len(epoch_indices) < batch_size:
-            logging.info('Completed Epoch')
-            epoch_indices = np.random.permutation(np.arange(len(train_x)))
-        batch_indices = epoch_indices[:batch_size]
-        epoch_indices = epoch_indices[batch_size:]
+        batch_indices = batching_fn(
+            batch_size=batch_size, targets=targets,
+            context={
+                'current_step': current_step,
+                'average_l2_loss': moving_nat_loss
+            }
+        )
 
         batch_input_noise = train_x[batch_indices]
         batch_target_noise = targets[batch_indices]
 
-        current_step, new_assignment_indices, _ = sess.run(
-            [global_step_t, new_assignment_indices_t, train_op],
+        current_step, mean_loss_for_batch, new_assignment_indices, z, _ = sess.run(
+            [global_step_t, mean_nat_loss_t, new_assignment_indices_t, z_t, train_op],
             feed_dict={
                 input_t: batch_input_noise,
                 target_t: batch_target_noise
             }
         )
+        moving_nat_loss = (0.99 * moving_nat_loss) + (0.01 * mean_loss_for_batch)
 
         train_x[batch_indices] = batch_input_noise[new_assignment_indices]
 
         if current_step % eval_steps == 1:
             # log change in targets
+
+            # number_changed = (new_assignment_indices != np.arange(len(new_assignment_indices))).sum()
+            # new_targets = batch_target_noise[new_assignment_indices]
+            # delta_tartgets = new_targets - batch_target_noise
+            # delta = new_targets - z
+            # dists_targets = np.linalg.norm(delta_tartgets, ord=2, axis=1)
+            # dists = np.linalg.norm(delta, ord=2, axis=1)
+            # dists_x = np.linalg.norm(
+            #     batch_input_noise - batch_input_noise[new_assignment_indices],
+            #     ord=2, axis=1
+            # )
+            #
+            # if current_step > 20_000:
+            #     import code  # NOQA
+            #     code.interact(local=locals())
+
             number_changed = (new_assignment_indices != np.arange(len(new_assignment_indices))).sum()
             metric_logger.log_scalar('fraction_of_targets_changing', number_changed / batch_size, current_step)
 
@@ -133,10 +155,10 @@ if __name__ == '__main__':
     user_config = utils.import_module(config_path).config
 
     default_config = {
-        'targets_fn': None,
         'dataset_fn': None,
         'model_fn': None,
         'batch_size': 100,
+        'batching_fn': None
     }
 
     config = {}

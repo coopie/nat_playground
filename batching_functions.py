@@ -25,8 +25,12 @@ def progressive_local_search(targets):
 
         # HACK for the time being, only look at the current step?
         current_step = context['current_step']
+        if current_step > 2 * (len(targets) / batch_size):  # after an epoch
+            average_loss = context['average_l2_loss']  # average distance from points to targets
+            search_radius = int(average_loss * num_buckets) + 1
+        else:
+            search_radius = 256
         index_x, index_y = index_fn(random_target_sample)
-        search_radius = max(num_buckets - (current_step // 1000), 1)
         # END
 
         # original idea - a bit cleaner
@@ -58,30 +62,33 @@ def progressive_local_search(targets):
         probability_buckets = np.array([len(bucket) for bucket in buckets], dtype=np.float32)
         probability_buckets /= probability_buckets.sum()
 
-        for _ in range(2):
-            sampled_bucket_indices = np.random.choice(len(buckets), batch_size, replace=True, p=probability_buckets)
-            bucket_indices, counts = np.unique(sampled_bucket_indices, return_counts=True)
+        sampled_bucket_indices = np.random.choice(len(buckets), batch_size, replace=True, p=probability_buckets)
+        bucket_indices, counts = np.unique(sampled_bucket_indices, return_counts=True)
 
-            indices_for_batch = []
-            for bucket_index, count in zip(bucket_indices, counts):
-                bucket = np.array(buckets[bucket_index])
+        indices_for_batch = []
+        for bucket_index, count in zip(bucket_indices, counts):
+            bucket = np.array(buckets[bucket_index])
 
-                if count > len(bucket):  # Impossible to sample enough points from this bucket
-                    break
+            if count > len(bucket):  # Impossible to sample enough points from this bucket
+                indices_for_batch += [bucket]
+                continue
 
-                indices_from_bucket = utils.fast_random_choice(
-                    bucket,
-                    size=count
-                )
-                indices_for_batch += [indices_from_bucket]
+            indices_from_bucket = utils.fast_random_choice(
+                bucket,
+                size=count
+            )
+            indices_for_batch += [indices_from_bucket]
 
-            indices_for_batch = [] if len(indices_for_batch) == 0 else np.concatenate(indices_for_batch)
-            if len(indices_for_batch) == batch_size:  # then we didn't break in the loop
-                return indices_for_batch
+        indices_for_batch = [] if len(indices_for_batch) == 0 else np.concatenate(indices_for_batch)
+        if len(indices_for_batch) == batch_size:  # then we didn't break in the loop
+            return indices_for_batch
 
-        logging.warning('Slow batching used')
-        # this did't work, so just return a random batch
-        return np.random.choice(len(targets), size=batch_size, replace=False)
+        logging.warning(f'Slow batching used for {batch_size - len(indices_for_batch)} examples in batch')
+        # this did'nt work, so just return a random batch along with what's gathered
+        return np.concatenate((
+            indices_for_batch,
+            np.random.choice(len(targets), size=batch_size - len(indices_for_batch), replace=False)
+        ))
 
     return batching_function
 

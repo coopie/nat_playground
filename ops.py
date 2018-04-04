@@ -21,11 +21,20 @@ def cost_matrix(predicted, targets, loss_func, scope=None):
         )
 
 
-def euclidean_distance(x, y):
-    x = tf.cast(x, tf.float32)
-    y = tf.cast(y, tf.float32)
-    squared_distance = ((x - y) ** 2)
-    return tf.sqrt(tf.reduce_sum(squared_distance, axis=1))
+def euclidean_distance(x, y, scope=None):
+    with ops.name_scope(scope, 'euclidean_distance', [x, y]):
+        x = tf.cast(x, tf.float32)
+        y = tf.cast(y, tf.float32)
+        squared_distance = ((x - y) ** 2)
+        return tf.sqrt(tf.reduce_sum(squared_distance, axis=1))
+
+
+def squared_distance(x, y, scope=None):
+    with ops.name_scope(scope, 'squared_distance', [x, y]):
+        x = tf.cast(x, tf.float32)
+        y = tf.cast(y, tf.float32)
+        squared_distance = ((x - y) ** 2)
+        return tf.reduce_sum(squared_distance, axis=1)
 
 
 def repeat(x, n, scope=None):

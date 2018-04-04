@@ -30,3 +30,4 @@ def test_progressive_local_search():
         a = batching_function(batch_size=10, context={'current_step': i}, targets=points)
         assert a.ndim == 1
         assert len(a) == 10
+        assert len(set(a.tolist())) == len(a)
