@@ -93,7 +93,7 @@ def progressive_local_search(targets):
     return batching_function
 
 
-def random_batching(targets):
+def cyclical_batching(targets):
     epoch_indices = np.random.permutation(np.arange(len(targets)))
 
     def batching_function(batch_size, targets, context):
@@ -104,5 +104,12 @@ def random_batching(targets):
         batch_indices = epoch_indices[:batch_size]
         epoch_indices = epoch_indices[batch_size:]
         return batch_indices
+
+    return batching_function
+
+
+def random_batching(*unused):
+    def batching_function(batch_size, targets, context):
+        return utils.fast_random_choice(len(targets), batch_size)
 
     return batching_function

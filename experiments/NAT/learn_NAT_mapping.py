@@ -7,7 +7,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # NOQA Shut up tensorflow warnings
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.ops import state_ops
+import pickle
 
 import ops
 import utils
@@ -26,6 +26,7 @@ def run_experiment(
     eval_steps = 500
 
     train_x, targets = dataset_fn()
+    target_assignments = np.arange(len(targets))
 
     assert len(train_x) == len(targets)
 
@@ -59,8 +60,6 @@ def run_experiment(
 
     global_step_t = tf.train.get_or_create_global_step()
 
-    # increment_global_step_t = state_ops.assign_add(global_step_t, 1, name='increment_global_step_t')
-
     train_op = optimizer.minimize(
         mean_nat_loss_t,
         global_step_t
@@ -77,7 +76,11 @@ def run_experiment(
     metric_logger = metric_logging.TensorboardLogger(
         writer=tf.summary.FileWriterCache.get(logdir)
     )
-    shutil.copyfile(config_path, logdir + '/config.py')
+    shutil.copyfile(config_path, f'{logdir}/config.py')
+    assignments_path = f'{logdir}/assignments.p'
+    if os.path.isfile(assignments_path):
+        with open(assignments_path, 'rb') as f:
+            target_assignments = pickle.load(f)
 
     train_noise_image, *_ = np.histogram2d(targets[:, 0], targets[:, 1], bins=(256, 256))
     metric_logger.log_images(
@@ -100,14 +103,15 @@ def run_experiment(
             }
         )
 
-        batch_input_noise = train_x[batch_indices]
-        batch_target_noise = targets[batch_indices]
+        batch_input = train_x[batch_indices]
+        target_indices = target_assignments[batch_indices]
+        batch_target = targets[target_indices]
 
-        current_step, mean_loss_for_batch, new_assignment_indices, z, _ = sess.run(
-            [global_step_t, mean_nat_loss_t, new_assignment_indices_t, z_t, train_op],
+        current_step, mean_loss_for_batch, new_assignment_indices, _ = sess.run(
+            [global_step_t, mean_nat_loss_t, new_assignment_indices_t, train_op],
             feed_dict={
-                input_t: batch_input_noise,
-                target_t: batch_target_noise
+                input_t: batch_input,
+                target_t: batch_target
             }
         )
         moving_nat_loss = (0.99 * moving_nat_loss) + (0.01 * mean_loss_for_batch)
@@ -115,9 +119,11 @@ def run_experiment(
         moving_reassignment_fraction = (0.99 * moving_reassignment_fraction) + (0.01 * fraction_changed)
 
         # Update target assignment
-        train_x[batch_indices] = batch_input_noise[new_assignment_indices]
+        target_assignments[batch_indices] = target_assignments[batch_indices][new_assignment_indices].copy()
 
         if current_step % eval_steps == 1:
+            with open(assignments_path, 'wb') as f:
+                pickle.dump(target_assignments, f)
             metric_logger.log_scalar('fraction_of_targets_changing', moving_reassignment_fraction, current_step)
 
             validation_results = [
