@@ -24,10 +24,9 @@ def progressive_local_search(targets):
         random_target_sample = targets[np.random.choice(len(targets))]
 
         # HACK for the time being, only look at the current step?
-        current_step = context['current_step']
-        if current_step > 2 * (len(targets) / batch_size):  # after an epoch
+        if context['current_step'] > 10 * (len(targets) // batch_size):  # after 10 epochs
             average_loss = context['average_l2_loss']  # average distance from points to targets
-            search_radius = int(average_loss * num_buckets) + 1
+            search_radius = int(average_loss * num_buckets) * 2
         else:
             search_radius = 256
         index_x, index_y = index_fn(random_target_sample)

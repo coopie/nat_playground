@@ -20,10 +20,10 @@ def run_experiment(
     batching_fn,
     batch_size,
     run_name,
+    eval_steps,
     config_path=None
 ):
     optimizer = tf.train.AdamOptimizer(1e-3)
-    eval_steps = 500
 
     train_x, targets = dataset_fn()
     target_assignments = np.arange(len(targets))
@@ -99,7 +99,8 @@ def run_experiment(
             batch_size=batch_size, targets=targets,
             context={
                 'current_step': current_step,
-                'average_l2_loss': moving_nat_loss
+                'average_l2_loss': moving_nat_loss,
+                'moving_reassignment_fraction': moving_reassignment_fraction
             }
         )
 
@@ -160,7 +161,8 @@ if __name__ == '__main__':
         'dataset_fn': None,
         'model_fn': None,
         'batch_size': 100,
-        'batching_fn': None
+        'batching_fn': None,
+        'eval_steps': 500
     }
 
     config = {}

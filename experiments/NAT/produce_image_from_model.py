@@ -1,7 +1,9 @@
 import sys
+import logging
 
 import numpy as np
 import tensorflow as tf
+from tqdm import tqdm
 
 import metric_logging
 from utils import import_module
@@ -9,26 +11,22 @@ from scipy.misc import imsave
 
 
 def produce_image_from_model(
-    dataset_fn,
     model_fn,
     logdir,
+    input_noise_fn,
     **unused
 ):
     batch_size = None
     number_of_points = 10_000_000
-    z_dim = 2  # we are genrating a greyscale image, so if z != 2, then something is wrong
 
-    (train_x, _), (validation_x, _), _ = dataset_fn()
-    # HACK we are assuming a gaussian noise input here, might eb worth refactoring to be a bit more general
-    noise_dims = train_x.shape[1]
-    new_noise = np.random.normal(size=(number_of_points, noise_dims))
+    inputs = input_noise_fn(10_000_000)
 
     input_t = tf.placeholder(
         dtype=tf.float32,
         name='input_t',
-        shape=(batch_size, *train_x.shape[1:])
+        shape=(batch_size, *inputs.shape[1:])
     )
-    z_t = model_fn(input_t, z_dim)
+    z_t = model_fn(input_t, 2)
     tf.train.get_or_create_global_step()
 
     sess = tf.train.MonitoredTrainingSession(
@@ -41,7 +39,13 @@ def produce_image_from_model(
     )
 
     print('generating points....')
-    points = sess.run(z_t, feed_dict={input_t: new_noise})
+    batch_size = 512
+    points = np.concatenate(
+        [
+            sess.run(z_t, feed_dict={input_t: inputs[i: i + batch_size]})
+            for i in tqdm(range(0, len(inputs), batch_size))
+        ]
+    )
 
     reconstructed, *_ = np.histogram2d(points[:, 0], points[:, 1], bins=(256, 256))
     reconstructed_image = reconstructed.T / reconstructed.max()
@@ -54,6 +58,8 @@ def produce_image_from_model(
 
 
 if __name__ == '__main__':
+    tf_log = logging.getLogger('tensorflow')
+    tf_log.setLevel(logging.ERROR)
     args = sys.argv[1:]
     assert len(args) == 1, 'usage: <path_to_logdir>'
 

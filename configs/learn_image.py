@@ -18,25 +18,29 @@ heatmap = utils.image_to_square_greyscale_array(im)
 
 seed = 1337
 np.random.seed(seed)
-train_size = 32 * 1000
+train_size = 64_000 * 2
 
-data_points = np.random.normal(size=(train_size, 3))
+# data_points = np.random.normal(size=(train_size, 3))
 # # l2 normalize the points
 # data_points /= np.linalg.norm(data_points, axis=1, ord=2).reshape((-1, 1))
-# data_points = np.random.uniform(size=(train_size, 8))
+input_noise_fn = lambda size: np.random.uniform(size=(size, 100))  # NOQA
+data_points = input_noise_fn(train_size)
 
 targets = noise_as_targets.sample_from_heatmap(
     heatmap, train_size, sampling_method='even',
 )
 
-batching_function = batching_functions.random_batching(targets)
 # batching_function = batching_functions.progressive_local_search(targets)
+batching_function = batching_functions.random_batching(targets)
 
 config = {
     'dataset_fn': lambda: (data_points, targets),
     'model_fn': lambda input_t, output_size: models.multi_layer_mlp(
-        input_t, output_size, hidden_dims=[128, 128], activation_fn=tf.nn.crelu
+        input_t, output_size, hidden_dims=[512, 512], activation_fn=tf.tanh
     ),
-    'batch_size': 64,
-    'batching_fn': batching_function
+    'batch_size': 128,
+    'batching_fn': batching_function,
+    # 'eval_steps': 500
+    'eval_steps': 10_000,
+    'input_noise_fn': input_noise_fn
 }
