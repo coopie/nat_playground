@@ -21,6 +21,7 @@ def run_experiment(
     batch_size,
     run_name,
     eval_steps,
+    train_steps,
     config_path=None
 ):
     optimizer = tf.train.AdamOptimizer(1e-3)
@@ -94,7 +95,7 @@ def run_experiment(
     moving_nat_loss = 0.5
     moving_reassignment_fraction = 1.0
 
-    while True:
+    while current_step < train_steps:
         batch_indices = batching_fn(
             batch_size=batch_size, targets=targets,
             context={
@@ -162,7 +163,8 @@ if __name__ == '__main__':
         'model_fn': None,
         'batch_size': 100,
         'batching_fn': None,
-        'eval_steps': 500
+        'eval_steps': 500,
+        'train_steps': np.inf
     }
 
     config = {}
