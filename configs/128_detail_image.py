@@ -44,5 +44,5 @@ config = {
     # 'eval_steps': 500
     'eval_steps': 200,
     'input_noise_fn': input_noise_fn,
-    'train_steps': 1_000_000
+    'train_steps': 2_000_000
 }

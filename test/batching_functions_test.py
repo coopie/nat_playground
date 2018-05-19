@@ -3,9 +3,9 @@ import numpy as np
 import batching_functions
 
 
-def test_random_batching():
+def test_cyclical_batching():
     points = np.random.uniform(size=(10, 2))
-    batching_function = batching_functions.random_batching(points)
+    batching_function = batching_functions.cyclical_batching(points)
 
     a, b = batching_function(5, points, {}), batching_function(5, points, {})
     # check that this is the whole dataset
@@ -19,6 +19,15 @@ def test_random_batching():
     epoch_indices2 = np.concatenate(batches).tolist()
 
     assert set(epoch_indices2) == set(epoch_indices)
+
+
+def test_random_batching():
+    points = np.random.uniform(size=(10, 2))
+    batching_function = batching_functions.cyclical_batching(points)
+    for i in range(20):
+        indices = batching_function(5, points, {})
+        assert len(indices) == 5
+        assert len(set(indices)) == len(indices)
 
 
 def test_progressive_local_search():

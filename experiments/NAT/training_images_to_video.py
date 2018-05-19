@@ -8,7 +8,7 @@ import png
 from scipy.misc import imsave
 
 
-def save_images_from_training(path_to_events_file):
+def save_images_from_training(path_to_events_file, path_to_photos):
     images = []
     for summary in tqdm(tf.train.summary_iterator(path_to_events_file)):
         try:
@@ -24,20 +24,19 @@ def save_images_from_training(path_to_events_file):
             images += [(image_array, step, wall_time)]
         except Exception as e:
             pass
-    save_images_to_dir(images, 'debug_images')
+    save_images_to_dir(images, path_to_photos)
 
 
 def save_images_to_dir(images, path):
     max_step = max([step for _, step, _ in images])
-    base = int(np.log10(max_step))
-    name_format_string = f'image_rep_{{:0{base}d}}.png'
+    base = int(np.log10(max_step)) + 1
+    name_format_string = f'{path}/image_rep_{{:0{base}d}}.png'
     os.makedirs(path, exist_ok=True)
     for image, step, _ in tqdm(images):
         imsave(name_format_string.format(step), image)
 
 
 if __name__ == '__main__':
-    # args = sys.argv[1:]
-    # assert len(args) == 1
-    # save_images_from_training(args[0])
-    save_images_from_training('model_logs/me_128k_normale_100d/events.out.tfevents.1525164588.nemo')
+    args = sys.argv[1:]
+    assert len(args) == 2
+    save_images_from_training(*args)
