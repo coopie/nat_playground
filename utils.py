@@ -1,3 +1,4 @@
+import os
 import importlib.util
 
 import numpy as np
@@ -44,3 +45,19 @@ def fast_random_choice(x, size, num_tries=2):
 
     # otherwise do the slow sampling
     return np.random.choice(x, size, replace=False)
+
+
+def save_embeddings(outputs, labels, *, logdir):
+    embeddings_dir = os.path.join(logdir, 'embeddings')
+    os.makedirs(embeddings_dir, exist_ok=True)
+
+    np.savetxt(
+        os.path.join(embeddings_dir, 'embeddings.tsv'),
+        outputs,
+        delimiter='\t'
+    )
+    np.savetxt(
+        os.path.join(embeddings_dir, 'labels.tsv'),
+        labels.astype(int),
+        delimiter='\t'
+    )

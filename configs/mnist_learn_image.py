@@ -25,7 +25,7 @@ data_points = np.concatenate(
     [x.images for x in [dataset.train, dataset.validation, dataset.test]]
 )
 batch_size = 128
-data_points = data_points.reshape((len(data_points), -1))[:-(len(data_points) % batch_size)]
+data_points = data_points.reshape((len(data_points), -1))
 np.random.shuffle(data_points)
 
 targets = noise_as_targets.sample_from_heatmap(
@@ -41,5 +41,7 @@ config = {
         input_t, output_size, hidden_dims=[128, 128], activation_fn=tf.sigmoid
     ),
     'batch_size': batch_size,
-    'batching_fn': batching_function
+    'batching_fn': batching_function,
+    'eval_steps': 50,
+    'input_noise_fn': lambda x: exit('input is not noise')
 }

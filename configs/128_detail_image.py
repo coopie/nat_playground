@@ -10,8 +10,8 @@ import batching_functions
 # im = imread('data/images/donald_duck.jpeg', mode='I')
 # im = imread('data/images/spiral.png', mode='I')
 # im = imread('data/images/mandelbrot.jpeg', mode='I')
-im = 255 - imread('data/images/me.png', mode='I')
-# im = 255 - imread('data/images/all_that_must_be.jpg', mode='I')
+# im = 255 - imread('data/images/me2.png', mode='I')
+im = 255 - imread('data/images/all_that_must_be.gif', mode='I')
 # im = 255 - imread('data/images/smart_ali_crop.gif', mode='I')
 # im = 255 - imread('data/images/ali-cropped.jpg', mode='I')
 heatmap = utils.image_to_square_greyscale_array(im)
@@ -44,5 +44,6 @@ config = {
     # 'eval_steps': 500
     'eval_steps': 200,
     'input_noise_fn': input_noise_fn,
-    'train_steps': 2_000_000
+    'train_steps': 2_000_000,
+    'image_dimensions': (512, 512)
 }

@@ -22,6 +22,7 @@ def run_experiment(
     run_name,
     eval_steps,
     train_steps,
+    image_dimensions,
     config_path=None
 ):
     optimizer = tf.train.AdamOptimizer(1e-3)
@@ -83,7 +84,11 @@ def run_experiment(
         with open(assignments_path, 'rb') as f:
             target_assignments = pickle.load(f)
 
-    train_noise_image, *_ = np.histogram2d(targets[:, 0], targets[:, 1], bins=(256, 256))
+    train_noise_image, *_ = np.histogram2d(
+        targets[:, 0], targets[:, 1],
+        bins=image_dimensions,
+        range=((0, 1), (0, 1))
+    )
     metric_logger.log_images(
         'train_noise_image',
         [train_noise_image.T / train_noise_image.max()],
@@ -138,7 +143,11 @@ def run_experiment(
             ]
             validation_z = np.concatenate([x[0] for x in validation_results])
 
-            validation_noise_image, *_ = np.histogram2d(validation_z[:, 0], validation_z[:, 1], bins=(256, 256))
+            validation_noise_image, *_ = np.histogram2d(
+                validation_z[:, 0], validation_z[:, 1],
+                bins=image_dimensions,
+                range=((0, 1), (0, 1))
+            )
             metric_logger.log_images(
                 'validation_noise_image',
                 [validation_noise_image.T / validation_noise_image.max()],
@@ -164,7 +173,8 @@ if __name__ == '__main__':
         'batch_size': 100,
         'batching_fn': None,
         'eval_steps': 500,
-        'train_steps': np.inf
+        'train_steps': np.inf,
+        'image_dimensions': (256, 256),
     }
 
     config = {}
