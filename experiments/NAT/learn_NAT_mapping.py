@@ -18,6 +18,7 @@ def run_experiment(
     dataset_fn,
     model_fn,
     batching_fn,
+    optimizer,
     batch_size,
     run_name,
     eval_steps,
@@ -25,8 +26,6 @@ def run_experiment(
     image_dimensions,
     config_path=None
 ):
-    optimizer = tf.train.AdamOptimizer(1e-3)
-
     train_x, targets = dataset_fn()
     target_assignments = np.arange(len(targets))
 
@@ -78,11 +77,13 @@ def run_experiment(
     metric_logger = metric_logging.TensorboardLogger(
         writer=tf.summary.FileWriterCache.get(logdir)
     )
-    shutil.copyfile(config_path, f'{logdir}/config.py')
     assignments_path = f'{logdir}/assignments.p'
     if os.path.isfile(assignments_path):
+        logging.info(f'Restoring model from {logdir}')
         with open(assignments_path, 'rb') as f:
             target_assignments = pickle.load(f)
+    else:
+        shutil.copyfile(config_path, f'{logdir}/config.py')
 
     train_noise_image, *_ = np.histogram2d(
         targets[:, 0], targets[:, 1],
@@ -175,6 +176,7 @@ if __name__ == '__main__':
         'eval_steps': 500,
         'train_steps': np.inf,
         'image_dimensions': (256, 256),
+        'optimizer': tf.train.AdamOptimizer(1e-3)
     }
 
     config = {}

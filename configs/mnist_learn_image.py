@@ -24,7 +24,7 @@ dataset = input_data.read_data_sets("data/MNIST/", one_hot=False, reshape=False)
 data_points = np.concatenate(
     [x.images for x in [dataset.train, dataset.validation, dataset.test]]
 )
-batch_size = 128
+batch_size = 100
 data_points = data_points.reshape((len(data_points), -1))
 np.random.shuffle(data_points)
 
@@ -38,7 +38,10 @@ batching_function = batching_functions.random_batching(targets)
 config = {
     'dataset_fn': lambda: (data_points, targets),
     'model_fn': lambda input_t, output_size: models.multi_layer_mlp(
-        input_t, output_size, hidden_dims=[128, 128], activation_fn=tf.sigmoid
+        # input_t, output_size, hidden_dims=[128, 128], activation_fn=tf.sigmoid
+        # input_t, output_size, hidden_dims=[32], activation_fn=tf.sigmoid
+        # input_t, output_size, hidden_dims=[8], activation_fn=tf.sigmoid
+        input_t, output_size, hidden_dims=[64], activation_fn=tf.sigmoid
     ),
     'batch_size': batch_size,
     'batching_fn': batching_function,
