@@ -16,7 +16,7 @@ Pillow==5.0.0
 plotly==2.5.1
 pluggy==0.6.0
 protobuf==3.5.1
-py==1.5.2
+py==1.10.0
 pypng==0.0.18
 pytest==3.4.0
 pytz==2018.3
