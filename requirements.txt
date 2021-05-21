@@ -23,7 +23,7 @@ pytz==2018.3
 requests==2.18.4
 scipy==1.0.0
 six==1.11.0
-tensorflow==1.5.0
+tensorflow==2.5.0
 tensorflow-tensorboard==1.5.1
 tflog==0.0.1
 tqdm==4.19.9
